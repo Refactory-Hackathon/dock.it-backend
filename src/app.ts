@@ -1,6 +1,5 @@
 import express, {
   NextFunction, Response, Request
-
 } from 'express';
 import cookieParser from "cookie-parser";
 import cors from "cors";
@@ -8,6 +7,11 @@ import cors from "cors";
 import { envConfig } from "./config/env.config";
 import { errorHandler } from './middleware/error.middleware';
 import { authRoutes } from './features/auth/auth.routes';
+import { projectRoutes } from './features/projects/project.routes';
+import { spaceRoutes } from './features/spaces/space.routes';
+import { signatureRoutes } from './features/signatures/signature.routes';
+import { userRoutes } from './features/user/user.routes';
+import { aiRoutes } from './features/ai/ai.routes';
 import { APIResponse } from './utils/response.util';
 
 const app = express();
@@ -34,6 +38,11 @@ app.use(cookieParser());
 app.use(express.json({ limit: "1mb" }));
 
 app.use('/api/auth', authRoutes);
+app.use('/api/projects', projectRoutes);
+app.use('/api/spaces', spaceRoutes);
+app.use('/api/signatures', signatureRoutes);
+app.use('/api/user', userRoutes);
+app.use('/api/ai', aiRoutes);
 
 app.use(errorHandler);
 

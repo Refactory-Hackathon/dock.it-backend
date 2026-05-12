@@ -1,5 +1,7 @@
 import app from "./app";
 
-app.listen(Number(3001), () =>{ 
-  console.log(`Server is running on port 3001`);
+const port = Number(3001);
+
+app.listen(port, () =>{ 
+  console.log(`Server is running on port ${port}`);
 })

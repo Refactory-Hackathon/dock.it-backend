@@ -109,3 +109,32 @@ export const verifyToken = async (
     return next(new APIError("Authentication failed", 500));
   }
 };
+
+export const optionalToken = async (
+  req: RequestWithUser,
+  res: Response<APIResponse>,
+  next: NextFunction,
+) => {
+  try {
+    const accessToken =
+      req.cookies?.accessToken ??
+      (req.headers.authorization?.startsWith("Bearer ")
+        ? req.headers.authorization.slice(7)
+        : undefined);
+
+    if (!accessToken) {
+      return next();
+    }
+
+    const accessPayload = verifyAccessToken(accessToken);
+    const user = await authRepository.findUserById(accessPayload.userId);
+
+    if (user) {
+      req.user = { id: user.id, email: user.email };
+    }
+
+    return next();
+  } catch {
+    return next();
+  }
+};

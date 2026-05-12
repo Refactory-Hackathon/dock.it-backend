@@ -40,6 +40,8 @@ export const envConfig = {
   PORT: getOptionalEnvKey("PORT", undefined, "3001"),
   GEMINI_API_KEY: getOptionalEnvKey("GEMINI_API_KEY"),
   GEMINI_MODEL: getOptionalEnvKey("GEMINI_MODEL", undefined, "gemini-2.5-flash"),
+  OPENAI_API_KEY: getOptionalEnvKey("OPENAI_API_KEY"),
+  OPENAI_MODEL: getOptionalEnvKey("OPENAI_MODEL", undefined, "gpt-4o-mini"),
   CORS_ORIGIN: getOptionalEnvKey(
     "CORS_ORIGIN",
     "FRONTEND_URL",

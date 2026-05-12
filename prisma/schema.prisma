@@ -11,3 +11,300 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+enum ProjectStatus {
+  DISCOVERY
+  PRD_REVIEW
+  IN_PROGRESS
+  SIGNING
+  DELIVERED
+}
+
+enum ProjectPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum ProjectRole {
+  OWNER
+  APPROVER
+  REVIEWER
+  EDITOR
+  VIEWER
+}
+
+enum ArtifactType {
+  PRD
+  DIAGRAM
+  DOCUMENTS
+  STAKEHOLDERS
+}
+
+enum ArtifactFormat {
+  MARKDOWN
+  MERMAID
+  HTML
+  JSON
+}
+
+enum ArtifactStatus {
+  DRAFT
+  GENERATED
+  APPROVED
+  NEEDS_REVISION
+  SIGNED
+}
+
+enum DocumentType {
+  MOM
+  MOU
+  NDA
+  SOW
+  PKS
+  BAST
+  QUOTATION
+  PRD
+}
+
+enum SignatureStatus {
+  PENDING
+  SIGNED
+  DECLINED
+}
+
+model User {
+  id             String         @id @default(uuid()) @db.Uuid
+  email          String         @unique
+  password       String
+  display_name   String?
+  created_at     DateTime       @default(now())
+  updated_at     DateTime       @updatedAt
+  refresh_tokens RefreshToken[]
+  owned_spaces   Space[]        @relation("SpaceOwner")
+  memberships    SpaceMember[]
+  owned_projects Project[]      @relation("ProjectOwner")
+  signatures     UserSignature[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id      String @id @default(uuid()) @db.Uuid
+  user_id String @db.Uuid
+
+  token      String    @unique
+  expires_at DateTime
+  revoked_at DateTime?
+
+  created_at DateTime  @default(now())
+  updated_at DateTime?
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([expires_at])
+  @@map("refresh_tokens")
+}
+
+model Space {
+  id         String        @id @default(uuid()) @db.Uuid
+  owner_id  String?       @db.Uuid
+  name       String
+  color      String        @default("bg-indigo-500")
+  created_at DateTime      @default(now())
+  updated_at DateTime      @updatedAt
+  owner      User?         @relation("SpaceOwner", fields: [owner_id], references: [id], onDelete: SetNull)
+  members    SpaceMember[]
+  projects   Project[]
+
+  @@index([owner_id])
+  @@unique([owner_id, name])
+  @@map("spaces")
+}
+
+model SpaceMember {
+  id          String      @id @default(uuid()) @db.Uuid
+  space_id    String      @db.Uuid
+  user_id     String?     @db.Uuid
+  name        String
+  email       String?
+  role        ProjectRole @default(VIEWER)
+  position    String?
+  invited_at  DateTime    @default(now())
+  accepted_at DateTime?
+  space       Space       @relation(fields: [space_id], references: [id], onDelete: Cascade)
+  user        User?       @relation(fields: [user_id], references: [id], onDelete: SetNull)
+
+  @@index([space_id])
+  @@index([user_id])
+  @@map("space_members")
+}
+
+model Project {
+  id                 String               @id @default(uuid()) @db.Uuid
+  slug               String               @unique
+  space_id           String?              @db.Uuid
+  owner_id           String?              @db.Uuid
+  name               String
+  client             String
+  industry           String?
+  project_type       String
+  status             ProjectStatus        @default(DISCOVERY)
+  progress           Int                  @default(0)
+  priority           ProjectPriority      @default(MEDIUM)
+  needs              String
+  budget             String?
+  start_date         DateTime?
+  deadline           DateTime?
+  selected_documents Json?
+  created_at         DateTime             @default(now())
+  updated_at         DateTime             @updatedAt
+  space              Space?               @relation(fields: [space_id], references: [id], onDelete: SetNull)
+  owner              User?                @relation("ProjectOwner", fields: [owner_id], references: [id], onDelete: SetNull)
+  meetings           Meeting[]
+  artifacts          GeneratedArtifact[]
+  documents          ProjectDocument[]
+  stakeholders       ProjectStakeholder[]
+  signatures         ProjectSignature[]
+
+  @@index([space_id])
+  @@index([owner_id])
+  @@index([status])
+  @@index([updated_at])
+  @@map("projects")
+}
+
+model Meeting {
+  id              String                  @id @default(uuid()) @db.Uuid
+  project_id      String                  @db.Uuid
+  title           String
+  transcript_text String?
+  summary         String?
+  started_at      DateTime                @default(now())
+  ended_at        DateTime?
+  created_at      DateTime                @default(now())
+  updated_at      DateTime                @updatedAt
+  project         Project                 @relation(fields: [project_id], references: [id], onDelete: Cascade)
+  lines           MeetingTranscriptLine[]
+
+  @@index([project_id])
+  @@index([started_at])
+  @@map("meetings")
+}
+
+model MeetingTranscriptLine {
+  id                 String   @id @default(uuid()) @db.Uuid
+  meeting_id         String   @db.Uuid
+  speaker            String   @default("Speaker")
+  text               String
+  started_at_seconds Int      @default(0)
+  order              Int
+  created_at         DateTime @default(now())
+  meeting            Meeting  @relation(fields: [meeting_id], references: [id], onDelete: Cascade)
+
+  @@index([meeting_id, order])
+  @@map("meeting_transcript_lines")
+}
+
+model GeneratedArtifact {
+  id             String            @id @default(uuid()) @db.Uuid
+  project_id     String            @db.Uuid
+  artifact_key   String
+  type           ArtifactType
+  document_type  DocumentType?
+  title          String
+  content        String
+  format         ArtifactFormat
+  status         ArtifactStatus    @default(GENERATED)
+  active_version Int               @default(1)
+  created_at     DateTime          @default(now())
+  updated_at     DateTime          @updatedAt
+  project        Project           @relation(fields: [project_id], references: [id], onDelete: Cascade)
+  versions       ArtifactVersion[]
+  documents      ProjectDocument[]
+
+  @@index([project_id, type])
+  @@unique([project_id, artifact_key])
+  @@map("generated_artifacts")
+}
+
+model ArtifactVersion {
+  id          String            @id @default(uuid()) @db.Uuid
+  artifact_id String            @db.Uuid
+  version     Int
+  prompt      String
+  content     String
+  created_at  DateTime          @default(now())
+  artifact    GeneratedArtifact @relation(fields: [artifact_id], references: [id], onDelete: Cascade)
+
+  @@unique([artifact_id, version])
+  @@index([artifact_id])
+  @@map("artifact_versions")
+}
+
+model ProjectDocument {
+  id          String              @id @default(uuid()) @db.Uuid
+  project_id  String              @db.Uuid
+  artifact_id String?             @db.Uuid
+  type        DocumentType
+  title       String
+  html        String
+  status      ArtifactStatus      @default(DRAFT)
+  created_at  DateTime            @default(now())
+  updated_at  DateTime            @updatedAt
+  project     Project             @relation(fields: [project_id], references: [id], onDelete: Cascade)
+  artifact    GeneratedArtifact?  @relation(fields: [artifact_id], references: [id], onDelete: SetNull)
+  signatures  ProjectSignature[]
+
+  @@index([project_id])
+  @@unique([project_id, type])
+  @@map("project_documents")
+}
+
+model ProjectStakeholder {
+  id           String      @id @default(uuid()) @db.Uuid
+  project_id   String      @db.Uuid
+  name         String
+  email        String?
+  organization String?
+  position     String?
+  role         ProjectRole @default(REVIEWER)
+  created_at   DateTime    @default(now())
+  updated_at   DateTime    @updatedAt
+  project      Project     @relation(fields: [project_id], references: [id], onDelete: Cascade)
+
+  @@index([project_id])
+  @@map("project_stakeholders")
+}
+
+model ProjectSignature {
+  id                 String          @id @default(uuid()) @db.Uuid
+  project_id         String          @db.Uuid
+  project_document_id String?        @db.Uuid
+  signer_name        String
+  signer_email       String?
+  signature_data_url String?
+  status             SignatureStatus @default(PENDING)
+  signed_at          DateTime?
+  created_at         DateTime        @default(now())
+  updated_at         DateTime        @updatedAt
+  project            Project         @relation(fields: [project_id], references: [id], onDelete: Cascade)
+  document           ProjectDocument? @relation(fields: [project_document_id], references: [id], onDelete: SetNull)
+
+  @@index([project_id])
+  @@index([project_document_id])
+  @@map("project_signatures")
+}
+
+model UserSignature {
+  id         String   @id @default(uuid()) @db.Uuid
+  user_id    String   @db.Uuid
+  name       String
+  data_url   String
+  created_at DateTime @default(now())
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@map("user_signatures")
+}
