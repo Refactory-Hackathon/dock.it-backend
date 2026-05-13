@@ -206,19 +206,22 @@ async function resolveSpaceId(
   return created.id;
 }
 
-const listProjects = async (userId?: string) => {
-  const where = userId
-    ? {
-        OR: [
-          { owner_id: userId },
-          { space: { OR: [{ owner_id: userId }, { members: { some: { user_id: userId } } }] } },
-          { stakeholders: { some: { email: { not: null } } } }, // fallback: show all for now
-        ],
-      }
-    : {};
+const listProjects = async (userId?: string, userEmail?: string) => {
+  if (!userId) {
+    return prisma.project.findMany({
+      orderBy: { updated_at: "desc" },
+      include: projectListInclude,
+    });
+  }
 
   return prisma.project.findMany({
-    where,
+    where: {
+      OR: [
+        { owner_id: userId },
+        { space: { OR: [{ owner_id: userId }, { members: { some: { user_id: userId } } }] } },
+        ...(userEmail ? [{ stakeholders: { some: { email: userEmail } } }] : []),
+      ],
+    },
     orderBy: { updated_at: "desc" },
     include: projectListInclude,
   });

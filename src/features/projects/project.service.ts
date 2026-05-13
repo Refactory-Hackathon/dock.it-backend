@@ -169,8 +169,8 @@ function toAiContext(
   };
 }
 
-const listProjects = async (userId?: string) => {
-  const projects = await projectRepository.listProjects(userId);
+const listProjects = async (userId?: string, userEmail?: string) => {
+  const projects = await projectRepository.listProjects(userId, userEmail);
 
   return {
     projects: projects.map((project, index) => toProjectSummary(project as NonNullable<ProjectRecord>, index)),

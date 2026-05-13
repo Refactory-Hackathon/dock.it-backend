@@ -72,4 +72,19 @@ router.patch(
   projectController.approveArtifact,
 );
 
+router.patch(
+  "/:projectId/documents/:docId/approve",
+  projectController.approveDocument,
+);
+
+router.post(
+  "/:projectId/documents/:docId/sign",
+  projectController.signDocument2,
+);
+
+router.get(
+  "/:projectId/documents/:docId/signatures",
+  projectController.getDocumentSignatures,
+);
+
 export const projectRoutes = router;

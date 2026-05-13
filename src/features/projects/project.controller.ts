@@ -15,8 +15,8 @@ const listProjects = async (
   next: NextFunction,
 ) => {
   try {
-    const userId = (req as RequestWithUser).user?.id;
-    const data = await projectService.listProjects(userId);
+    const user = (req as RequestWithUser).user;
+    const data = await projectService.listProjects(user?.id, user?.email);
 
     res.status(200).json({
       status: "success",
@@ -191,7 +191,6 @@ const approveArtifact = async (
   next: NextFunction,
 ) => {
   try {
-    const { projectService: ps } = await import("./project.service");
     const { projectRepository: repo } = await import("./project.repository");
 
     const artifact = await repo.updateArtifactStatus(req.params.artifactId, "APPROVED");
@@ -200,6 +199,98 @@ const approveArtifact = async (
       status: "success",
       message: "Artifact approved",
       data: { artifact },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const approveDocument = async (
+  req: RequestWithUser,
+  res: Response<APIResponse>,
+  next: NextFunction,
+) => {
+  try {
+    const prisma = (await import("../../lib/prisma")).default;
+    const doc = await prisma.projectDocument.update({
+      where: { id: req.params.docId },
+      data: { status: "APPROVED" },
+    });
+
+    res.status(200).json({
+      status: "success",
+      message: "Document approved",
+      data: { document: doc },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const signDocument2 = async (
+  req: RequestWithUser,
+  res: Response<APIResponse>,
+  next: NextFunction,
+) => {
+  try {
+    const prisma = (await import("../../lib/prisma")).default;
+    const { signerName, signerRole, signatureDataUrl } = req.body;
+
+    const signature = await prisma.projectSignature.create({
+      data: {
+        project_id: req.params.projectId,
+        project_document_id: req.params.docId,
+        signer_name: signerName,
+        signer_email: req.user?.email,
+        signer_role: signerRole || "developer",
+        signature_data_url: signatureDataUrl,
+        status: "SIGNED",
+        signed_at: new Date(),
+      },
+    });
+
+    // Check if both parties have signed
+    const allSignatures = await prisma.projectSignature.findMany({
+      where: { project_document_id: req.params.docId, status: "SIGNED" },
+    });
+
+    const hasClient = allSignatures.some((s) => s.signer_role === "client");
+    const hasDeveloper = allSignatures.some((s) => s.signer_role === "developer");
+
+    // If both signed, update document status to SIGNED
+    if (hasClient && hasDeveloper) {
+      await prisma.projectDocument.update({
+        where: { id: req.params.docId },
+        data: { status: "SIGNED" },
+      });
+    }
+
+    res.status(201).json({
+      status: "success",
+      message: "Document signed",
+      data: { signature, bothSigned: hasClient && hasDeveloper },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getDocumentSignatures = async (
+  req: Request,
+  res: Response<APIResponse>,
+  next: NextFunction,
+) => {
+  try {
+    const prisma = (await import("../../lib/prisma")).default;
+    const signatures = await prisma.projectSignature.findMany({
+      where: { project_document_id: req.params.docId },
+      orderBy: { created_at: "asc" },
+    });
+
+    res.status(200).json({
+      status: "success",
+      message: "Signatures fetched",
+      data: { signatures },
     });
   } catch (error) {
     next(error);
@@ -217,4 +308,7 @@ export const projectController = {
   signDocument,
   notifyClient,
   approveArtifact,
+  approveDocument,
+  signDocument2,
+  getDocumentSignatures,
 };
