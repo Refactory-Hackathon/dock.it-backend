@@ -16,7 +16,8 @@ const listSpaces = async (
   next: NextFunction,
 ) => {
   try {
-    const data = await spaceService.listSpaces();
+    const userId = (req as RequestWithUser).user?.id;
+    const data = await spaceService.listSpaces(userId);
 
     res.status(200).json({
       status: "success",

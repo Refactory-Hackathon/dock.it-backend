@@ -2,6 +2,7 @@ import { NextFunction, Request, Response } from "express";
 
 import { APIResponse } from "../../utils/response.util";
 import { projectService } from "./project.service";
+import { notifyClientService } from "./notify-client.service";
 import type { RequestUser } from "./project.types";
 
 type RequestWithUser = Request & {
@@ -14,7 +15,8 @@ const listProjects = async (
   next: NextFunction,
 ) => {
   try {
-    const data = await projectService.listProjects();
+    const userId = (req as RequestWithUser).user?.id;
+    const data = await projectService.listProjects(userId);
 
     res.status(200).json({
       status: "success",
@@ -161,6 +163,49 @@ const signDocument = async (
   }
 };
 
+const notifyClient = async (
+  req: RequestWithUser,
+  res: Response<APIResponse>,
+  next: NextFunction,
+) => {
+  try {
+    const data = await notifyClientService.notifyClient({
+      projectIdentifier: req.params.projectId,
+      message: req.body?.message,
+      senderName: req.user?.email,
+    });
+
+    res.status(200).json({
+      status: "success",
+      message: "Notification sent to stakeholders",
+      data,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const approveArtifact = async (
+  req: RequestWithUser,
+  res: Response<APIResponse>,
+  next: NextFunction,
+) => {
+  try {
+    const { projectService: ps } = await import("./project.service");
+    const { projectRepository: repo } = await import("./project.repository");
+
+    const artifact = await repo.updateArtifactStatus(req.params.artifactId, "APPROVED");
+
+    res.status(200).json({
+      status: "success",
+      message: "Artifact approved",
+      data: { artifact },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const projectController = {
   listProjects,
   getProject,
@@ -170,4 +215,6 @@ export const projectController = {
   generateDocument,
   addStakeholder,
   signDocument,
+  notifyClient,
+  approveArtifact,
 };

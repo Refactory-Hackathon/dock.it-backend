@@ -12,6 +12,10 @@ import { spaceRoutes } from './features/spaces/space.routes';
 import { signatureRoutes } from './features/signatures/signature.routes';
 import { userRoutes } from './features/user/user.routes';
 import { aiRoutes } from './features/ai/ai.routes';
+import { notificationRoutes } from './features/notifications/notification.routes';
+import { commentRoutes } from './features/comments/comment.routes';
+import { revisionRoutes, revisionResolveRoutes } from './features/revisions/revision.routes';
+import { invitationRoutes } from './features/invitations/invitation.routes';
 import { APIResponse } from './utils/response.util';
 
 const app = express();
@@ -43,6 +47,11 @@ app.use('/api/spaces', spaceRoutes);
 app.use('/api/signatures', signatureRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/projects/:projectId/artifacts/:artifactId/comments', commentRoutes);
+app.use('/api/projects/:projectId/artifacts/:artifactId/revisions', revisionRoutes);
+app.use('/api/projects/:projectId/revisions', revisionResolveRoutes);
+app.use('/api/invitations', invitationRoutes);
 
 app.use(errorHandler);
 

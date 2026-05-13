@@ -1,7 +1,17 @@
 import prisma from "../../lib/prisma";
 
-const listSpaces = async () => {
+const listSpaces = async (userId?: string) => {
+  const where = userId
+    ? {
+        OR: [
+          { owner_id: userId },
+          { members: { some: { user_id: userId } } },
+        ],
+      }
+    : {};
+
   return prisma.space.findMany({
+    where,
     orderBy: { updated_at: "desc" },
     include: {
       _count: {
@@ -27,6 +37,7 @@ const findById = async (spaceId: string) => {
           role: true,
           position: true,
           invited_at: true,
+          accepted_at: true,
         },
       },
       projects: {
