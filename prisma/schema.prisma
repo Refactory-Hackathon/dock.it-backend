@@ -292,6 +292,7 @@ model ProjectSignature {
   project_document_id String?        @db.Uuid
   signer_name        String
   signer_email       String?
+  signer_role        String          @default("developer")
   signature_data_url String?
   status             SignatureStatus @default(PENDING)
   signed_at          DateTime?
