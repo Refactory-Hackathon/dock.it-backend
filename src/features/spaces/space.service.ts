@@ -8,30 +8,19 @@ const roleMap = {
   Approver: "APPROVER",
 } as const;
 
-const fallbackSpaces = [
-  { id: "aerodyne", name: "Aerodyne Labs", color: "bg-indigo-500" },
-  { id: "loop", name: "Loop Inc.", color: "bg-emerald-500" },
-  { id: "harbor", name: "Harbor Coffee", color: "bg-amber-500" },
-];
+const fallbackSpaces: { id: string; name: string; color: string }[] = [];
 
-const listSpaces = async () => {
-  const spaces = await spaceRepository.listSpaces();
+const listSpaces = async (userId?: string) => {
+  const spaces = await spaceRepository.listSpaces(userId);
 
   return {
-    spaces:
-      spaces.length > 0
-        ? spaces.map((space) => ({
-            id: space.id,
-            name: space.name,
-            color: space.color,
-            projectCount: space._count.projects,
-            memberCount: space._count.members,
-          }))
-        : fallbackSpaces.map((space) => ({
-            ...space,
-            projectCount: 0,
-            memberCount: 0,
-          })),
+    spaces: spaces.map((space) => ({
+      id: space.id,
+      name: space.name,
+      color: space.color,
+      projectCount: space._count.projects,
+      memberCount: space._count.members,
+    })),
   };
 };
 
@@ -55,6 +44,7 @@ const getSpace = async (spaceId: string) => {
         email: m.email,
         role: m.role,
         position: m.position,
+        pending: !m.accepted_at,
       })),
       projects: space.projects.map((p) => ({
         id: p.slug,

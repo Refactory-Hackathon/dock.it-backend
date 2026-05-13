@@ -61,4 +61,15 @@ router.post(
   projectController.signDocument,
 );
 
+router.post(
+  "/:projectId/notify-client",
+  validate(projectIdentifierSchema, "params"),
+  projectController.notifyClient,
+);
+
+router.patch(
+  "/:projectId/artifacts/:artifactId/approve",
+  projectController.approveArtifact,
+);
+
 export const projectRoutes = router;

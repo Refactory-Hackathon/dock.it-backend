@@ -4,6 +4,7 @@ import {
   generateAiContent,
   type AiProjectContext,
 } from "../ai/ai.service";
+import { revisionService } from "../revisions/revision.service";
 import {
   mapArtifactTarget,
   mapDocumentType,
@@ -144,6 +145,10 @@ function toAiContext(
   project: NonNullable<ProjectRecord>,
   transcriptText?: string,
 ): AiProjectContext {
+  // Extract PRD and diagram content from artifacts
+  const prdArtifact = project.artifacts?.find((a) => a.type === "PRD");
+  const diagramArtifact = project.artifacts?.find((a) => a.type === "DIAGRAM");
+
   return {
     name: project.name,
     client: project.client,
@@ -159,11 +164,13 @@ function toAiContext(
       project.meetings[0]?.transcript_text ||
       project.meetings[0]?.lines.map((line) => line.text).join(" ") ||
       "",
+    prdContent: prdArtifact?.content || null,
+    diagramContent: diagramArtifact?.content || null,
   };
 }
 
-const listProjects = async () => {
-  const projects = await projectRepository.listProjects();
+const listProjects = async (userId?: string) => {
+  const projects = await projectRepository.listProjects(userId);
 
   return {
     projects: projects.map((project, index) => toProjectSummary(project as NonNullable<ProjectRecord>, index)),
@@ -221,6 +228,9 @@ const generateArtifact = async (
   });
 
   await projectRepository.updateProjectAfterGeneration(project.id, input.target);
+
+  // Auto-resolve pending revisions for this artifact
+  await revisionService.autoResolveForArtifact(artifact.id);
 
   return { artifact };
 };

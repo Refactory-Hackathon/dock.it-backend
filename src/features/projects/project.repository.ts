@@ -206,8 +206,19 @@ async function resolveSpaceId(
   return created.id;
 }
 
-const listProjects = async () => {
+const listProjects = async (userId?: string) => {
+  const where = userId
+    ? {
+        OR: [
+          { owner_id: userId },
+          { space: { OR: [{ owner_id: userId }, { members: { some: { user_id: userId } } }] } },
+          { stakeholders: { some: { email: { not: null } } } }, // fallback: show all for now
+        ],
+      }
+    : {};
+
   return prisma.project.findMany({
+    where,
     orderBy: { updated_at: "desc" },
     include: projectListInclude,
   });
@@ -448,6 +459,13 @@ const signDocument = async (
   });
 };
 
+const updateArtifactStatus = async (artifactId: string, status: "DRAFT" | "GENERATED" | "APPROVED" | "NEEDS_REVISION" | "SIGNED") => {
+  return prisma.generatedArtifact.update({
+    where: { id: artifactId },
+    data: { status },
+  });
+};
+
 export const projectRepository = {
   listProjects,
   findProjectByIdentifier,
@@ -458,4 +476,5 @@ export const projectRepository = {
   upsertDocument,
   addStakeholder,
   signDocument,
+  updateArtifactStatus,
 };
